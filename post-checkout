@@ -1,0 +1,108 @@
+#!/bin/sh
+#
+# continuous export post-checkout.sh v.1.0
+#
+############################# License #########################################
+# Copyright (c) 2015, Najub ApS
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Najub ApS nor the
+#       names of its contributors may be used to endorse or promote products
+#       derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL EAKTION APS BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+################################# Script ######################################
+# NB NB NB NB! Used in connection with a post-commit in a scenario where
+# a folder is created for each branch.
+# When using one folder per repo this file must be adapted
+###############################################################################
+#
+#
+# This script runs after a checkout and a folder "model_folder/<branch_name>" is
+# created at the same level of the current repository
+#
+# /some/path/to/repo/<YOUR_REPO_FOLDER>
+# /some/path/to/repo/model_folder
+#
+# Every file present in the current branch is copied into it
+#
+# http://www.cyberciti.biz/faq/unix-linux-test-existence-of-file-in-bash/
+# http://www.linuxquestions.org/questions/linux-general-1/store-multi-line-output-into-an-array-in-a-linux-bash-script-706878/
+# http://tldp.org/LDP/Bash-Beginners-Guide/html/sect_07_01.html (testing in bash)
+# ${s##*/}
+# http://www.cyberciti.biz/faq/bash-iterate-array/
+# new ref is $2 previous ref is $1 (the hash)
+###############################################################################
+
+current=${PWD/c:/c}
+
+################################ EDIT #########################################
+# Write here the repo name
+#
+#reponame='testing_git'
+
+reponame=$(basename "$PWD")
+#strip possibly a .git ending
+reponame=${reponame%.git}
+
+CURRENT_BRANCH=`git rev-parse --abbrev-ref HEAD`
+
+SKIP_MARK="nv"
+
+if [[ $CURRENT_BRANCH == "$SKIP_MARK"* ]]
+
+then
+	echo "Not-for-VEDA branch recognised. Nothing to do."
+	exit
+fi
+
+parent=${current%/*}
+
+##################################### EDIT #####################################
+# comment out if you use an absolute path below
+#target_folder=$parent/model_folder
+##################################### EDIT #####################################
+# Write here the absolute path to your model folder.Start with small /c
+# or comment out if you use a relative path
+#
+target_folder="/d/VEDA/VEDA_Models"
+aPrefix="~g2v_"
+###############################################################################
+
+
+
+target_folder=$target_folder/$aPrefix$reponame/$CURRENT_BRANCH
+current_folder=${current%/*}/$reponame
+
+echo ''
+echo 'post-checkout running...'
+
+if [ -d "$target_folder" ]
+
+then
+	echo "$target_folder" found. Nothing to do.
+
+else
+	echo "$target_folder does not exist. Copying the whole repo in a new $target_folder/"
+    git checkout-index -a -f --prefix=".temp/$CURRENT_BRANCH/"
+    cp -r ./.temp/"$CURRENT_BRANCH" "${target_folder%/*}"
+    rm -r ./.temp
+
+fi

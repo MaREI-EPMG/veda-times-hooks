@@ -1,0 +1,150 @@
+#!/bin/sh
+#
+# continuous export post-merge.sh v.1.1
+#
+############################# License #########################################
+# Copyright (c) 2015, Najub ApS
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Najub ApS nor the
+#       names of its contributors may be used to endorse or promote products
+#       derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL EAKTION APS BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+# Thanks to: Olexandr Balyk, obal@dtu.dk
+################################# Script ######################################
+# This script runs after a commit and checks the diff between the last
+# (the current HEAD) commit and the previous HEAD (ORIG_HEAD).
+# The files in the branch are used to synchronize the content of a folder
+# "model_folder/<branch_name>" created at the same level of the current
+# repository. If there are edited, added or removed files in the branch
+# they will be copied (for changed and added) or removed respectively
+#
+# /some/path/to/repo/<YOUR_REPO_FOLDER>
+# /some/path/to/repo/model_folder/<branch_name>
+#
+# If the directory does not exists we create and copy everything
+###############################################################################
+
+current=${PWD/c:/c}
+
+################################ EDIT ###############################################
+# Write here the repo name
+#
+#reponame='testing_git'
+
+reponame=$(basename "$PWD")
+#strip possibly a .git ending
+reponame=${reponame%.git}
+
+CURRENT_BRANCH=`git rev-parse --abbrev-ref HEAD`
+
+SKIP_MARK="nv"
+
+if [[ $CURRENT_BRANCH == "$SKIP_MARK"* ]]
+
+then
+	echo "Not-for-VEDA branch recognised. Nothing to do."
+	exit
+fi
+
+parent=${current%/*}
+
+##################################### EDIT ############################################
+# comment out if you use an absolute path below
+#target_folder="$parent/model_folder"
+##################################### EDIT ############################################
+# Write here the absolute path to your model folder.Start with small /c
+# or comment out if you use a relative path
+#
+target_folder="/d/VEDA/VEDA_Models"
+aPrefix="~g2v_"
+###############################################################################
+
+
+
+target_folder="$target_folder/$aPrefix$reponame/$CURRENT_BRANCH"
+current_folder="${current%/*}/$reponame"
+
+echo ''
+echo 'post-merge running...'
+
+
+if [ -d "$target_folder" ]
+
+then
+	echo "$target_folder" found
+
+#protect file array
+IFS=$'\t\n'
+
+###############################################################################
+# Load an array with alternatively symbols and filepths
+# The symbols are D A M for deleted added modified
+# Act on the filespaths corresponding to the found symbols
+#
+FILE_ARR=( `git diff --name-status --no-renames ORIG_HEAD HEAD` )
+
+total=${#FILE_ARR[*]}
+
+echo $(($total/2)) files modified
+echo ''
+
+for (( i = 0; i<=$(( $total - 1 )); i++ ))
+do
+    next=$(($i+1))
+    check=${FILE_ARR[$i]}
+
+    if [ $check = 'D' ]
+
+# the file has been removed
+
+        then
+        echo  "removing $folder/${FILE_ARR[$next]} "
+        path="$target_folder/${FILE_ARR[$next]}"
+        DIR="${path%/*}"
+        rm "$target_folder/${FILE_ARR[$next]}"
+        #check if the directory is empty, in case remove it
+        [ "$(ls -A $DIR)" ] || rm -r $DIR
+
+    elif [ $check = 'M' -o  $check = 'A' ]
+
+#the file has been modified or added
+
+        then
+        echo copying "${FILE_ARR[$next]}" to "$target_folder/${FILE_ARR[$next]}"
+        path="$target_folder/${FILE_ARR[$next]}"
+        DIR="${path%/*}"
+        #create subdirs before files
+        mkdir -p "${DIR}"
+        cp -dR "${FILE_ARR[$next]}" "$target_folder/${FILE_ARR[$next]}"
+#set to normal
+unset $IFS
+    fi
+done
+
+else
+	echo "$target_folder does not exist. Copying the whole repo in a new $target_folder/"
+    git checkout-index -a -f --prefix=".temp/$CURRENT_BRANCH/"
+    mkdir -p "${target_folder%/*}"
+    mv ./.temp/"$CURRENT_BRANCH" "${target_folder%/*}"
+    rm -r ./.temp
+
+fi
