@@ -102,7 +102,8 @@ then
 else
 	echo "$target_folder does not exist. Copying the whole repo in a new $target_folder/"
     git checkout-index -a -f --prefix=".temp/$CURRENT_BRANCH/"
-    cp -r ./.temp/"$CURRENT_BRANCH" "${target_folder%/*}"
+    mkdir -p "${target_folder%/*}"
+    mv ./.temp/"$CURRENT_BRANCH" "${target_folder%/*}"
     rm -r ./.temp
 
 fi
