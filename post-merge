@@ -74,7 +74,7 @@ parent=${current%/*}
 # Write here the absolute path to your model folder.Start with small /c
 # or comment out if you use a relative path
 #
-target_folder="/d/VEDA/VEDA_Models"
+target_folder="/c/VEDA/VEDA_Models"
 aPrefix="~g2v_"
 ###############################################################################
 
